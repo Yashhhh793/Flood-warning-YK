@@ -854,12 +854,28 @@ document.getElementById("check-btn").addEventListener("click", async () => {
     toast("Select a State + City, or enter latitude/longitude directly.", "error");
     return;
   }
+  if (!isInsideIndia(lat, lon)) {
+    toast("Please enter a location within India.", "error");
+    return;
+  }
   await checkLocation(lat, lon, name);
 });
+
+// Rough India bounding box (mainland + islands) - keeps map clicks
+// meaningful for this India-focused prototype.
+const INDIA_BOUNDS = { minLat: 6.5, maxLat: 37.6, minLon: 68.0, maxLon: 97.5 };
+function isInsideIndia(lat, lon) {
+  return lat >= INDIA_BOUNDS.minLat && lat <= INDIA_BOUNDS.maxLat &&
+         lon >= INDIA_BOUNDS.minLon && lon <= INDIA_BOUNDS.maxLon;
+}
 
 map.on("click", async (e) => {
   const lat = e.latlng.lat.toFixed(4);
   const lon = e.latlng.lng.toFixed(4);
+  if (!isInsideIndia(parseFloat(lat), parseFloat(lon))) {
+    toast("Please select a location within India.", "error");
+    return;
+  }
   await checkLocation(lat, lon, `Map point (${lat}, ${lon})`);
 });
 

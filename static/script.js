@@ -1,39 +1,31 @@
 const API = "";
 
-let map;
-let markersLayer;
+let map = null;
 let selectedMarker = null;
-let dashboardMarkers = [];
+let selectedLocation = null;
 
-const $ = (id) => document.getElementById(id);
+let searchTimer = null;
 
-function esc(value) {
-  return String(value ?? "").replace(/[&<>'"]/g, c => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "'": "&#39;",
-    '"': "&quot;"
-  }[c]));
-}
-
-function riskColor(level) {
-  return ({
-    LOW: "#22c55e",
-    MODERATE: "#eab308",
-    HIGH: "#f97316",
-    CRITICAL: "#ef4444"
-  })[level] || "#8ea0c2";
-}
 
 /* =========================
-   MAP
-   ========================= */
+   HELPER
+========================= */
+
+function $(id) {
+  return document.getElementById(id);
+}
+
+
+/* =========================
+   MAP INITIALIZATION
+========================= */
 
 function initMap() {
-  map = L.map("map", {
-    zoomControl: true
-  }).setView([22.9734, 78.6569], 5);
+
+  if (map) return;
+
+  // India center
+  map = L.map("map").setView([22.9734, 78.6569], 5);
 
   L.tileLayer(
     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -43,180 +35,163 @@ function initMap() {
     }
   ).addTo(map);
 
-  markersLayer = L.layerGroup().addTo(map);
 
-  /* Click anywhere on map */
-  map.on("click", async (e) => {
-    const lat = e.latlng.lat;
-    const lon = e.latlng.lng;
+  // Map click
+  map.on("click", async function (event) {
 
-    setSelectedLocation(
-      lat,
-      lon,
-      "Map selected location",
-      true
-    );
+    const lat = event.latlng.lat;
+    const lon = event.latlng.lng;
 
     await reverseGeocode(lat, lon);
+
   });
+
 }
 
 
 /* =========================
-   LOCATION SELECT
-   ========================= */
+   SET SELECTED LOCATION
+========================= */
 
 function setSelectedLocation(
   lat,
   lon,
-  name = "Selected location",
+  name = "Selected Location",
   moveMap = true
 ) {
+
   lat = Number(lat);
   lon = Number(lon);
 
-  if (
-    !Number.isFinite(lat) ||
-    !Number.isFinite(lon) ||
-    lat < -90 ||
-    lat > 90 ||
-    lon < -180 ||
-    lon > 180
-  ) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
     return;
   }
 
-  const latInput = $("lat-input");
-  const lonInput = $("lon-input");
-  const locationInput = $("location-input");
-  const selectedBox = $("selected-location-box");
-  const checkBtn = $("check-btn");
+  selectedLocation = {
+    lat: lat,
+    lon: lon,
+    name: name || "Selected Location"
+  };
 
-  if (latInput) {
-    latInput.value = lat.toFixed(6);
-  }
 
-  if (lonInput) {
-    lonInput.value = lon.toFixed(6);
-  }
+  // Inputs
+  $("lat-input").value = lat.toFixed(6);
+  $("lon-input").value = lon.toFixed(6);
 
-  if (locationInput && name) {
-    locationInput.value = name;
-  }
+  $("selected-location-name").textContent =
+    selectedLocation.name;
 
-  if (selectedBox) {
-    selectedBox.innerHTML =
-      `<strong>Selected:</strong> ${esc(name)}<br>` +
-      `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-  }
+  $("selected-location-box").classList.remove("hidden");
 
-  if (checkBtn) {
-    checkBtn.disabled = false;
-  }
 
+  // Marker
   if (selectedMarker) {
     map.removeLayer(selectedMarker);
   }
 
-  selectedMarker = L.marker(
-    [lat, lon],
-    { draggable: true }
-  ).addTo(map);
+  selectedMarker = L.marker([lat, lon])
+    .addTo(map)
+    .bindPopup(
+      `<b>${escapeHtml(selectedLocation.name)}</b><br>
+       ${lat.toFixed(6)}, ${lon.toFixed(6)}`
+    )
+    .openPopup();
 
-  selectedMarker.bindTooltip(
-    name || "Selected location"
-  );
-
-  selectedMarker.on("dragend", async () => {
-    const p = selectedMarker.getLatLng();
-
-    setSelectedLocation(
-      p.lat,
-      p.lng,
-      "Selected location",
-      false
-    );
-
-    await reverseGeocode(p.lat, p.lng);
-  });
 
   if (moveMap) {
-    map.setView(
-      [lat, lon],
-      Math.max(map.getZoom(), 10)
-    );
+    map.setView([lat, lon], 11);
   }
+
+
+  // Hide suggestions
+  $("location-suggestions").classList.add("hidden");
+
 }
 
 
 /* =========================
    SEARCH LOCATION
-   ========================= */
-
-let searchTimer = null;
+========================= */
 
 function bindLocationSearch() {
+
   const input = $("location-input");
-  const suggestions = $("location-suggestions");
 
-  if (!input || !suggestions) return;
-
-  input.addEventListener("input", () => {
-
-    clearTimeout(searchTimer);
+  input.addEventListener("input", function () {
 
     const query = input.value.trim();
 
+    clearTimeout(searchTimer);
+
     if (query.length < 2) {
-      suggestions.classList.add("hidden");
-      suggestions.innerHTML = "";
+
+      $("location-suggestions").innerHTML = "";
+
+      $("location-suggestions")
+        .classList.add("hidden");
+
       return;
     }
-searchTimer = setTimeout(
-  () => searchLocations(query, true),
-  700
-);
 
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
+
+    searchTimer = setTimeout(
+      () => searchLocations(query),
+      600
+    );
+
+  });
+
+
+  // Enter key
+  input.addEventListener("keydown", function (event) {
+
+    if (event.key === "Enter") {
+
+      event.preventDefault();
 
       const query = input.value.trim();
 
-      if (query) {
+      if (query.length >= 2) {
         searchLocations(query, true);
       }
+
     }
 
-    if (e.key === "Escape") {
-      suggestions.classList.add("hidden");
-    }
   });
+
 }
 
 
-async function searchLocations(query, autoSelect = false) {
+/* =========================
+   NOMINATIM SEARCH
+========================= */
+
+async function searchLocations(
+  query,
+  autoSelect = false
+) {
 
   const suggestions = $("location-suggestions");
 
-  if (!suggestions) return;
-
-  suggestions.classList.remove("hidden");
-
-  suggestions.innerHTML =
-    `<div class="location-suggestion">
-      Searching...
-    </div>`;
-
   try {
 
+    suggestions.innerHTML =
+      `<div class="location-suggestion">
+        🔎 Searching...
+      </div>`;
+
+    suggestions.classList.remove("hidden");
+
+
     const url =
-      `https://nominatim.openstreetmap.org/search` +
-      `?format=jsonv2` +
-      `&addressdetails=1` +
-      `&limit=5` +
-      `&countrycodes=in` +
-      `&q=${encodeURIComponent(query)}`;
+      "https://nominatim.openstreetmap.org/search" +
+      "?format=jsonv2" +
+      "&addressdetails=1" +
+      "&limit=5" +
+      "&countrycodes=in" +
+      "&q=" +
+      encodeURIComponent(query);
+
 
     const response = await fetch(url, {
       headers: {
@@ -224,98 +199,89 @@ async function searchLocations(query, autoSelect = false) {
       }
     });
 
+
     if (!response.ok) {
       throw new Error("Location search failed");
     }
 
-    const results = await response.json();
 
-    if (!results.length) {
+    const places = await response.json();
+
+
+    if (!places.length) {
+
       suggestions.innerHTML =
         `<div class="location-suggestion">
-          Location not found
+          ❌ No location found
         </div>`;
+
       return;
     }
 
-    suggestions.innerHTML = results.map((place, index) => {
+
+    suggestions.innerHTML = "";
+
+
+    places.forEach(place => {
+
+      const item =
+        document.createElement("div");
+
+      item.className =
+        "location-suggestion";
+
 
       const title =
-        place.display_name
-          .split(",")
-          .slice(0, 2)
-          .join(", ");
+        getPlaceName(place);
 
-      const coords =
-        `${Number(place.lat).toFixed(5)}, ` +
-        `${Number(place.lon).toFixed(5)}`;
 
-      return `
-        <div
-          class="location-suggestion"
-          data-index="${index}"
-        >
-          <div class="location-suggestion-title">
-            ${esc(title)}
-          </div>
+      item.innerHTML = `
+        <div class="location-suggestion-title">
+          📍 ${escapeHtml(title)}
+        </div>
 
-          <div class="location-suggestion-coords">
-            ${esc(place.display_name)}
-            <br>
-            ${coords}
-          </div>
+        <div class="location-suggestion-coords">
+          ${Number(place.lat).toFixed(5)},
+          ${Number(place.lon).toFixed(5)}
         </div>
       `;
 
-    }).join("");
 
-    document
-      .querySelectorAll(".location-suggestion[data-index]")
-      .forEach((item) => {
+      item.addEventListener("click", function () {
 
-        item.addEventListener("click", () => {
+        setSelectedLocation(
+          Number(place.lat),
+          Number(place.lon),
+          title,
+          true
+        );
 
-          const index =
-            Number(item.dataset.index);
+        $("location-input").value = title;
 
-          const place = results[index];
-
-          const name =
-            place.display_name
-              .split(",")
-              .slice(0, 2)
-              .join(", ");
-
-          setSelectedLocation(
-            Number(place.lat),
-            Number(place.lon),
-            name,
-            true
-          );
-
-          suggestions.classList.add("hidden");
-        });
       });
 
-    /* If Enter was pressed */
-    if (autoSelect && results[0]) {
 
-      const place = results[0];
+      suggestions.appendChild(item);
 
-      const name =
-        place.display_name
-          .split(",")
-          .slice(0, 2)
-          .join(", ");
+    });
+
+
+    // Enter = first result
+    if (autoSelect && places.length > 0) {
+
+      const first = places[0];
+
+      const title = getPlaceName(first);
 
       setSelectedLocation(
-        Number(place.lat),
-        Number(place.lon),
-        name,
+        Number(first.lat),
+        Number(first.lon),
+        title,
         true
       );
 
-      suggestions.classList.add("hidden");
+      $("location-input").value = title;
+
     }
 
   } catch (error) {
@@ -324,132 +290,167 @@ async function searchLocations(query, autoSelect = false) {
 
     suggestions.innerHTML =
       `<div class="location-suggestion">
-        Search failed. Try again.
+        ⚠️ Unable to search location
       </div>`;
+
   }
+
+}
+
+
+/* =========================
+   PLACE NAME
+========================= */
+
+function getPlaceName(place) {
+
+  const address = place.address || {};
+
+  return (
+    address.city ||
+    address.town ||
+    address.village ||
+    address.municipality ||
+    address.county ||
+    address.state ||
+    place.display_name ||
+    "Selected Location"
+  );
+
 }
 
 
 /* =========================
    REVERSE GEOCODING
-   ========================= */
+========================= */
 
 async function reverseGeocode(lat, lon) {
 
   try {
 
     const url =
-      `https://nominatim.openstreetmap.org/reverse` +
-      `?format=jsonv2` +
-      `&lat=${encodeURIComponent(lat)}` +
-      `&lon=${encodeURIComponent(lon)}`;
+      "https://nominatim.openstreetmap.org/reverse" +
+      "?format=jsonv2" +
+      "&zoom=10" +
+      "&lat=" +
+      encodeURIComponent(lat) +
+      "&lon=" +
+      encodeURIComponent(lon);
 
-    const response = await fetch(url);
 
-    if (!response.ok) return;
+    const response = await fetch(url, {
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
+
+    if (!response.ok) {
+      throw new Error("Reverse geocoding failed");
+    }
+
 
     const data = await response.json();
 
-    let name = "Selected location";
+    const name = getPlaceName(data);
 
-    if (data.display_name) {
-      name = data.display_name
-        .split(",")
-        .slice(0, 2)
-        .join(", ");
-    }
+    setSelectedLocation(
+      lat,
+      lon,
+      name,
+      true
+    );
 
-    const locationInput = $("location-input");
-
-    if (locationInput) {
-      locationInput.value = name;
-    }
-
-    const selectedBox = $("selected-location-box");
-
-    if (selectedBox) {
-      selectedBox.innerHTML =
-        `<strong>Selected:</strong> ${esc(name)}<br>` +
-        `${Number(lat).toFixed(6)}, ` +
-        `${Number(lon).toFixed(6)}`;
-    }
+    $("location-input").value = name;
 
   } catch (error) {
-    console.error("Reverse geocoding failed:", error);
+
+    console.error(error);
+
+    setSelectedLocation(
+      lat,
+      lon,
+      "Selected Map Location",
+      true
+    );
+
+    $("location-input").value =
+      "Selected Map Location";
+
   }
+
 }
 
 
 /* =========================
    CLEAR LOCATION
-   ========================= */
+========================= */
 
 function clearLocation() {
 
+  selectedLocation = null;
+
+
+  $("location-input").value = "";
+
+  $("lat-input").value = "";
+
+  $("lon-input").value = "";
+
+  $("selected-location-name").textContent = "—";
+
+  $("selected-location-box")
+    .classList.add("hidden");
+
+
+  $("location-suggestions")
+    .classList.add("hidden");
+
+
   if (selectedMarker) {
+
     map.removeLayer(selectedMarker);
+
     selectedMarker = null;
+
   }
 
-  if ($("location-input")) {
-    $("location-input").value = "";
-  }
-
-  if ($("lat-input")) {
-    $("lat-input").value = "";
-  }
-
-  if ($("lon-input")) {
-    $("lon-input").value = "";
-  }
-
-  if ($("selected-location-box")) {
-    $("selected-location-box").innerHTML =
-      "No location selected";
-  }
-
-  if ($("check-btn")) {
-    $("check-btn").disabled = true;
-  }
-
-  if ($("location-suggestions")) {
-    $("location-suggestions").classList.add("hidden");
-  }
 }
 
 
 /* =========================
-   PREDICT RISK
-   ========================= */
+   PREDICT
+========================= */
 
 async function predictSelected() {
 
-  const lat =
-    parseFloat($("lat-input")?.value);
+  if (!selectedLocation) {
 
-  const lon =
-    parseFloat($("lon-input")?.value);
-
-  const name =
-    ($("location-input")?.value ||
-     "Selected location").trim();
-
-  if (
-    !Number.isFinite(lat) ||
-    !Number.isFinite(lon)
-  ) {
     alert(
-      "Please select a location from the search box or map."
+      "Please select a location first."
     );
+
     return;
+
   }
+
 
   const button = $("check-btn");
 
   button.disabled = true;
-  button.textContent = "Checking...";
+
+  button.textContent =
+    "⏳ Predicting...";
+
 
   try {
+
+    const lat = selectedLocation.lat;
+
+    const lon = selectedLocation.lon;
+
+    const name = selectedLocation.name;
+
 
     const url =
       `${API}/api/predict` +
@@ -457,17 +458,22 @@ async function predictSelected() {
       `&lon=${encodeURIComponent(lon)}` +
       `&name=${encodeURIComponent(name)}`;
 
-    const response =
-      await fetch(url);
+
+    const response = await fetch(url);
+
+
+    const data = await response.json();
+
 
     if (!response.ok) {
+
       throw new Error(
-        await response.text()
+        data.detail ||
+        "Prediction failed"
       );
+
     }
 
-    const data =
-      await response.json();
 
     showSelectedResult(data);
 
@@ -475,390 +481,599 @@ async function predictSelected() {
 
     console.error(error);
 
-    alert(
-      "Prediction failed. Please try again."
+    showError(
+      error.message ||
+      "Unable to get flood prediction."
     );
 
   } finally {
 
     button.disabled = false;
-    button.textContent = "Predict Risk";
+
+    button.textContent =
+      "🔍 Predict Flood Risk";
+
   }
+
 }
 
 
 /* =========================
-   RESULT PANEL
-   ========================= */
+   SHOW RESULT
+========================= */
 
 function showSelectedResult(data) {
 
-  const panel = $("detail-panel");
+  const section =
+    $("result-section");
 
-  if (!panel) return;
+  const panel =
+    $("detail-panel");
 
-  const color =
-    riskColor(data.risk_level);
 
-  const inputs =
-    data.inputs || {};
+  section.classList.remove("hidden");
+
 
   const probability =
-    data.probability ??
-    data.risk_probability ??
-    data.probabilities?.[data.risk_level] ??
-    0;
+    getValue(
+      data,
+      [
+        "probability",
+        "landslide_probability",
+        "flood_probability",
+        "risk_probability"
+      ],
+      null
+    );
 
-  panel.innerHTML = `
-    <span
-      class="close-x"
-      onclick="this.parentElement.classList.add('hidden')"
-    >
-      ×
-    </span>
 
-    <h3>${esc(data.name || "Selected location")}</h3>
+  const risk =
+    getValue(
+      data,
+      [
+        "risk_level",
+        "risk",
+        "prediction",
+        "status"
+      ],
+      "UNKNOWN"
+    );
 
-    <div
-      class="risk-big"
-      style="color:${color}"
-    >
-      ${esc(data.risk_level || "UNKNOWN")}
-    </div>
 
-    <div class="row">
-      <span>Probability</span>
-      <strong>
-        ${Math.round(Number(probability) * 100)}%
-      </strong>
-    </div>
+  const rainfall3 =
+    getValue(
+      data,
+      [
+        "rainfall_3day_mm",
+        "rainfall_3d",
+        "rainfall_3_day"
+      ],
+      "—"
+    );
 
-    <div class="row">
-      <span>1h Rainfall</span>
-      <strong>
-        ${inputs.rainfall_1h_mm ?? "—"} mm
-      </strong>
-    </div>
 
-    <div class="row">
-      <span>24h Rainfall</span>
-      <strong>
-        ${inputs.rainfall_24h_mm ?? "—"} mm
-      </strong>
-    </div>
+  const rainfall7 =
+    getValue(
+      data,
+      [
+        "rainfall_7day_mm",
+        "rainfall_7d",
+        "rainfall_7_day"
+      ],
+      "—"
+    );
 
-    <div class="row">
-      <span>Soil Moisture</span>
-      <strong>
-        ${inputs.soil_moisture_m3m3 ?? "—"}
-      </strong>
-    </div>
 
-    <div class="row">
-      <span>Elevation</span>
-      <strong>
-        ${inputs.elevation_m ?? "—"} m
-      </strong>
-    </div>
+  const soil =
+    getValue(
+      data,
+      [
+        "soil_moisture_m3_m3",
+        "soil_moisture"
+      ],
+      "—"
+    );
 
-    <div class="row">
-      <span>Slope</span>
-      <strong>
-        ${inputs.slope_deg ?? "—"}°
-      </strong>
-    </div>
 
-    <div class="action-box">
-      <strong>Recommended action</strong>
-      <br>
-      ${esc(
-        data.recommended_action ||
-        "Continue monitoring."
-      )}
-    </div>
+  const elevation =
+    getValue(
+      data,
+      [
+        "elevation_m",
+        "elevation"
+      ],
+      "—"
+    );
 
-    <div class="src">
-      Weather:
-      ${esc(data.data_sources?.weather || "—")}
-      <br>
-      Terrain:
-      ${esc(data.data_sources?.terrain || "—")}
-    </div>
-  `;
 
-  panel.classList.remove("hidden");
+  const slope =
+    getValue(
+      data,
+      [
+        "slope_degrees",
+        "slope"
+      ],
+      "—"
+    );
+
+
+  let probabilityText = "—";
 
   if (
-    Number.isFinite(Number(data.lat)) &&
-    Number.isFinite(Number(data.lon))
+    probability !== null &&
+    probability !== undefined &&
+    probability !== "—"
   ) {
 
-    setSelectedLocation(
-      Number(data.lat),
-      Number(data.lon),
-      data.name || "Selected location",
-      true
-    );
+    let p = Number(probability);
+
+    if (p <= 1) {
+      p = p * 100;
+    }
+
+    probabilityText =
+      p.toFixed(2) + "%";
+
   }
-}
 
 
-/* =========================
-   MAP SELECT BUTTON
-   ========================= */
+  const riskClass =
+    getRiskClass(String(risk));
 
-function enableMapSelection() {
 
-  alert(
-    "Click anywhere on the map to select a location."
-  );
+  panel.innerHTML = `
 
-  map.getContainer().style.cursor =
-    "crosshair";
+    <div class="risk-result ${riskClass}">
 
-  const handler = (e) => {
+      <div class="risk-main">
 
-    setSelectedLocation(
-      e.latlng.lat,
-      e.latlng.lng,
-      "Map selected location",
-      true
-    );
+        <div class="risk-label">
+          FLOOD RISK
+        </div>
 
-    reverseGeocode(
-      e.latlng.lat,
-      e.latlng.lng
-    );
+        <div class="risk-value">
+          ${escapeHtml(String(risk))}
+        </div>
 
-    map.getContainer().style.cursor = "";
+        <div class="risk-probability">
+          Probability:
+          <strong>${probabilityText}</strong>
+        </div>
 
-    map.off("click", handler);
-  };
+      </div>
 
-  map.once("click", handler);
+
+      <div class="risk-data">
+
+        <div class="data-item">
+          <span>🌧️ 3-Day Rainfall</span>
+          <strong>${formatValue(rainfall3, " mm")}</strong>
+        </div>
+
+        <div class="data-item">
+          <span>🌧️ 7-Day Rainfall</span>
+          <strong>${formatValue(rainfall7, " mm")}</strong>
+        </div>
+
+        <div class="data-item">
+          <span>💧 Soil Moisture</span>
+          <strong>${formatValue(soil, "")}</strong>
+        </div>
+
+        <div class="data-item">
+          <span>⛰️ Elevation</span>
+          <strong>${formatValue(elevation, " m")}</strong>
+        </div>
+
+        <div class="data-item">
+          <span>📐 Slope</span>
+          <strong>${formatValue(slope, "°")}</strong>
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  section.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+
 }
 
 
 /* =========================
    DASHBOARD
-   ========================= */
+========================= */
 
 async function loadDashboard() {
+
+  const dashboard =
+    $("dashboard");
+
+
+  dashboard.innerHTML =
+    `<p>⏳ Loading dashboard...</p>`;
+
 
   try {
 
     const response =
-      await fetch(`${API}/api/dashboard`);
+      await fetch(
+        `${API}/api/dashboard`
+      );
 
-    if (!response.ok) return;
+
+    if (!response.ok) {
+      throw new Error(
+        "Dashboard unavailable"
+      );
+    }
+
 
     const data =
       await response.json();
 
-    const locations =
-      data.locations || [];
 
-    renderSummary(locations);
-    renderLocations(locations);
-    renderMapMarkers(locations);
-
-    if ($("last-updated")) {
-      $("last-updated").textContent =
-        `Updated ${new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit"
-        })}`;
-    }
+    renderDashboard(data);
 
   } catch (error) {
 
-    console.error(
-      "Dashboard loading failed:",
-      error
-    );
+    console.error(error);
 
-    if ($("last-updated")) {
-      $("last-updated").textContent =
-        "Update failed";
-    }
+    dashboard.innerHTML =
+      `<p>
+        ⚠️ Dashboard data unavailable.
+      </p>`;
+
   }
-}
 
-
-function renderSummary(locations) {
-
-  const counts = {
-    LOW: 0,
-    MODERATE: 0,
-    HIGH: 0,
-    CRITICAL: 0
-  };
-
-  locations.forEach((location) => {
-
-    if (counts[location.risk_level] !== undefined) {
-      counts[location.risk_level]++;
-    }
-  });
-
-  if (!$("summary-cards")) return;
-
-  $("summary-cards").innerHTML =
-    Object.entries(counts)
-      .map(([risk, count]) => `
-        <div
-          class="summary-card"
-          style="border-top:3px solid ${riskColor(risk)}"
-        >
-          <div class="count">${count}</div>
-          <div class="label">${risk}</div>
-        </div>
-      `)
-      .join("");
-}
-
-
-function renderLocations(locations) {
-
-  if (!$("location-list")) return;
-
-  $("location-list").innerHTML =
-    locations.map((loc) => `
-      <div
-        class="loc-card"
-        style="border-left-color:${riskColor(loc.risk_level)}"
-      >
-        <div class="name">
-          ${esc(loc.name)}
-        </div>
-
-        <div class="meta">
-
-          <span>
-            ${Number(loc.lat).toFixed(3)},
-            ${Number(loc.lon).toFixed(3)}
-          </span>
-
-          <span
-            class="risk-tag"
-            style="background:${riskColor(loc.risk_level)}"
-          >
-            ${esc(loc.risk_level)}
-          </span>
-
-        </div>
-      </div>
-    `).join("");
-
-  document
-    .querySelectorAll(".loc-card")
-    .forEach((card, index) => {
-
-      card.addEventListener("click", () => {
-
-        const loc = locations[index];
-
-        setSelectedLocation(
-          loc.lat,
-          loc.lon,
-          loc.name,
-          true
-        );
-
-        showSelectedResult(loc);
-      });
-    });
-}
-
-
-function renderMapMarkers(locations) {
-
-  if (!markersLayer) return;
-
-  markersLayer.clearLayers();
-
-  dashboardMarkers = [];
-
-  locations.forEach((loc) => {
-
-    const marker =
-      L.circleMarker(
-        [loc.lat, loc.lon],
-        {
-          radius: 8,
-          color: "#ffffff",
-          weight: 1.5,
-          fillColor: riskColor(loc.risk_level),
-          fillOpacity: 0.9
-        }
-      ).addTo(markersLayer);
-
-    marker.bindPopup(
-      `<strong>${esc(loc.name)}</strong><br>` +
-      `<b style="color:${riskColor(loc.risk_level)}">` +
-      `${esc(loc.risk_level)} risk` +
-      `</b>`
-    );
-
-    marker.on("click", () => {
-
-      setSelectedLocation(
-        loc.lat,
-        loc.lon,
-        loc.name,
-        true
-      );
-
-      showSelectedResult(loc);
-    });
-
-    dashboardMarkers.push(marker);
-  });
 }
 
 
 /* =========================
-   BUTTONS
-   ========================= */
+   RENDER DASHBOARD
+========================= */
+
+function renderDashboard(data) {
+
+  const dashboard =
+    $("dashboard");
+
+
+  if (!data || typeof data !== "object") {
+
+    dashboard.innerHTML =
+      `<p>No dashboard data available.</p>`;
+
+    return;
+
+  }
+
+
+  let html =
+    `<div class="dashboard-grid">`;
+
+
+  Object.entries(data).forEach(
+    ([key, value]) => {
+
+      if (
+        typeof value === "object" &&
+        value !== null
+      ) {
+        return;
+      }
+
+
+      html += `
+
+        <div class="data-item">
+
+          <span>
+            ${escapeHtml(formatKey(key))}
+          </span>
+
+          <strong>
+            ${escapeHtml(String(value))}
+          </strong>
+
+        </div>
+
+      `;
+
+    }
+  );
+
+
+  html += `</div>`;
+
+
+  dashboard.innerHTML = html;
+
+}
+
+
+/* =========================
+   REFRESH
+========================= */
+
+function refreshDashboard() {
+
+  loadDashboard();
+
+}
+
+
+/* =========================
+   GET VALUE
+========================= */
+
+function getValue(
+  object,
+  keys,
+  fallback = "—"
+) {
+
+  for (const key of keys) {
+
+    if (
+      object &&
+      object[key] !== undefined &&
+      object[key] !== null
+    ) {
+
+      return object[key];
+
+    }
+
+  }
+
+  return fallback;
+
+}
+
+
+/* =========================
+   RISK CLASS
+========================= */
+
+function getRiskClass(risk) {
+
+  const value =
+    risk.toLowerCase();
+
+
+  if (
+    value.includes("critical")
+  ) {
+    return "risk-critical";
+  }
+
+
+  if (
+    value.includes("high")
+  ) {
+    return "risk-high";
+  }
+
+
+  if (
+    value.includes("moderate") ||
+    value.includes("medium")
+  ) {
+    return "risk-moderate";
+  }
+
+
+  if (
+    value.includes("low")
+  ) {
+    return "risk-low";
+  }
+
+
+  return "";
+
+}
+
+
+/* =========================
+   FORMAT VALUE
+========================= */
+
+function formatValue(
+  value,
+  suffix = ""
+) {
+
+  if (
+    value === null ||
+    value === undefined ||
+    value === "—"
+  ) {
+    return "—";
+  }
+
+
+  if (
+    typeof value === "number"
+  ) {
+
+    return (
+      value.toFixed(2) +
+      suffix
+    );
+
+  }
+
+
+  return (
+    String(value) +
+    suffix
+  );
+
+}
+
+
+/* =========================
+   FORMAT KEY
+========================= */
+
+function formatKey(key) {
+
+  return String(key)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, char =>
+      char.toUpperCase()
+    );
+
+}
+
+
+/* =========================
+   ERROR
+========================= */
+
+function showError(message) {
+
+  $("result-section")
+    .classList.remove("hidden");
+
+
+  $("detail-panel").innerHTML = `
+
+    <div class="risk-result risk-high">
+
+      <div class="risk-main">
+
+        <div class="risk-label">
+          ERROR
+        </div>
+
+        <div class="risk-value">
+          ⚠️ Unable to Predict
+        </div>
+
+        <div class="risk-probability">
+          ${escapeHtml(message)}
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================
+   HTML ESCAPE
+========================= */
+
+function escapeHtml(value) {
+
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+}
+
+
+/* =========================
+   UI BINDING
+========================= */
 
 function bindUI() {
 
-  $("check-btn")?.addEventListener(
-    "click",
-    predictSelected
-  );
+  $("check-btn")
+    .addEventListener(
+      "click",
+      predictSelected
+    );
 
-  $("refresh-btn")?.addEventListener(
-    "click",
-    loadDashboard
-  );
 
-  $("map-select-btn")?.addEventListener(
-    "click",
-    enableMapSelection
-  );
+  $("refresh-btn")
+    .addEventListener(
+      "click",
+      refreshDashboard
+    );
 
-  $("clear-location-btn")?.addEventListener(
-    "click",
-    clearLocation
-  );
+
+  $("clear-location-btn")
+    .addEventListener(
+      "click",
+      clearLocation
+    );
+
+
+  $("map-select-btn")
+    .addEventListener(
+      "click",
+      function () {
+
+        $("map").scrollIntoView({
+          behavior: "smooth",
+          block: "center"
+        });
+
+        alert(
+          "Click anywhere on the map to select a location."
+        );
+
+      }
+    );
+
 
   bindLocationSearch();
+
+
+  // Close suggestions when clicking outside
+  document.addEventListener(
+    "click",
+    function (event) {
+
+      const wrapper =
+        document.querySelector(
+          ".location-search-wrapper"
+        );
+
+      if (
+        wrapper &&
+        !wrapper.contains(event.target)
+      ) {
+
+        $("location-suggestions")
+          .classList.add("hidden");
+
+      }
+
+    }
+  );
+
 }
 
 
 /* =========================
-   START
-   ========================= */
+   START APPLICATION
+========================= */
 
 document.addEventListener(
   "DOMContentLoaded",
-  () => {
+  function () {
 
     initMap();
 
     bindUI();
 
     loadDashboard();
+
   }
 );

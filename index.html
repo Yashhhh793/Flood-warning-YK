@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FlashGuard | Hyper-Local Flash Flood Early Warning</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">FG</div>
+    <div>
+      <div class="brand-title">FLASHGUARD</div>
+      <div class="brand-sub">Hyper-Local Flash Flood Prediction &amp; Early Warning</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span id="last-updated" class="muted">—</span>
+    <button id="refresh-btn" class="btn-primary">⟳ Refresh</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="summary-cards" id="summary-cards"></div>
+
+    <div class="search-box">
+      <div class="search-title">Check any location</div>
+      <div class="search-row">
+        <input id="lat-input" type="text" placeholder="Latitude" />
+        <input id="lon-input" type="text" placeholder="Longitude" />
+      </div>
+      <input id="name-input" type="text" placeholder="Location name (optional)" />
+      <button id="check-btn" class="btn-secondary">Predict Risk</button>
+    </div>
+
+    <div class="location-list-title">Monitored Locations</div>
+    <div id="location-list" class="location-list"></div>
+  </aside>
+
+  <main class="map-wrap">
+    <div id="map"></div>
+    <div id="detail-panel" class="detail-panel hidden"></div>
+  </main>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/script.js"></script>
+</body>
+</html>

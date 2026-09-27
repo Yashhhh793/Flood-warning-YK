@@ -172,12 +172,10 @@ function bindLocationSearch() {
       suggestions.innerHTML = "";
       return;
     }
-
-    searchTimer = setTimeout(
-      () => searchLocations(query),
-      400
-    );
-  });
+searchTimer = setTimeout(
+  () => searchLocations(query, true),
+  700
+);
 
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {

@@ -31,14 +31,69 @@
     <div class="summary-cards" id="summary-cards"></div>
 
     <div class="search-box">
-      <div class="search-title">Check any location</div>
-      <div class="search-row">
-        <input id="lat-input" type="text" placeholder="Latitude" />
-        <input id="lon-input" type="text" placeholder="Longitude" />
-      </div>
-      <input id="name-input" type="text" placeholder="Location name (optional)" />
-      <button id="check-btn" class="btn-secondary">Predict Risk</button>
-    </div>
+
+  <div class="search-title">
+    Check any location
+  </div>
+
+  <!-- LOCATION SEARCH -->
+  <div class="location-search-wrapper">
+
+    <input
+      id="location-input"
+      type="text"
+      placeholder="Search city / state / location..."
+      autocomplete="off"
+    />
+
+    <div
+      id="location-suggestions"
+      class="location-suggestions hidden"
+    ></div>
+
+  </div>
+
+
+  <!-- COORDINATES -->
+  <div class="search-row">
+
+    <input
+      id="lat-input"
+      type="text"
+      placeholder="Latitude"
+      readonly
+    />
+
+    <input
+      id="lon-input"
+      type="text"
+      placeholder="Longitude"
+      readonly
+    />
+
+  </div>
+
+
+  <!-- SELECTED LOCATION -->
+  <div
+    id="selected-location-box"
+    class="selected-location-box"
+  >
+    No location selected
+  </div>
+
+
+  <!-- PREDICT -->
+  <button
+    id="check-btn"
+    class="btn-secondary"
+    type="button"
+    disabled
+  >
+    Predict Risk
+  </button>
+
+</div>
 
     <div class="location-list-title">Monitored Locations</div>
     <div id="location-list" class="location-list"></div>

@@ -5,6 +5,186 @@ const RISK_COLORS = {
   CRITICAL: "#ef4444",
 };
 
+// ---------------------------------------------------------------
+// India state -> city/district picker data (name, lat, lon)
+// Approximate city-centre coordinates - good enough for a
+// hyper-local risk lookup; the live API calls then fetch exact
+// weather/terrain for that point.
+// ---------------------------------------------------------------
+const INDIA_LOCATIONS = {
+  "Andhra Pradesh": [
+    { name: "Visakhapatnam", lat: 17.6868, lon: 83.2185 },
+    { name: "Vijayawada", lat: 16.5062, lon: 80.6480 },
+    { name: "Guntur", lat: 16.3067, lon: 80.4365 },
+    { name: "Tirupati", lat: 13.6288, lon: 79.4192 },
+    { name: "Kurnool", lat: 15.8281, lon: 78.0373 },
+    { name: "Nellore", lat: 14.4426, lon: 79.9865 },
+  ],
+  "Arunachal Pradesh": [
+    { name: "Itanagar", lat: 27.0844, lon: 93.6053 },
+    { name: "Tawang", lat: 27.5859, lon: 91.8697 },
+    { name: "Ziro", lat: 27.5486, lon: 93.8321 },
+  ],
+  "Assam": [
+    { name: "Guwahati", lat: 26.1445, lon: 91.7362 },
+    { name: "Dibrugarh", lat: 27.4728, lon: 94.9120 },
+    { name: "Silchar", lat: 24.8333, lon: 92.7789 },
+    { name: "Jorhat", lat: 26.7509, lon: 94.2037 },
+  ],
+  "Bihar": [
+    { name: "Patna", lat: 25.5941, lon: 85.1376 },
+    { name: "Gaya", lat: 24.7955, lon: 84.9994 },
+    { name: "Muzaffarpur", lat: 26.1197, lon: 85.3910 },
+    { name: "Bhagalpur", lat: 25.2425, lon: 86.9842 },
+  ],
+  "Chhattisgarh": [
+    { name: "Raipur", lat: 21.2514, lon: 81.6296 },
+    { name: "Bilaspur", lat: 22.0797, lon: 82.1391 },
+    { name: "Jagdalpur (Bastar)", lat: 19.0748, lon: 82.0232 },
+    { name: "Durg", lat: 21.1938, lon: 81.2849 },
+  ],
+  "Goa": [
+    { name: "Panaji", lat: 15.4909, lon: 73.8278 },
+    { name: "Margao", lat: 15.2832, lon: 73.9862 },
+  ],
+  "Gujarat": [
+    { name: "Ahmedabad", lat: 23.0225, lon: 72.5714 },
+    { name: "Surat", lat: 21.1702, lon: 72.8311 },
+    { name: "Vadodara", lat: 22.3072, lon: 73.1812 },
+    { name: "Rajkot", lat: 22.3039, lon: 70.8022 },
+    { name: "Bhavnagar", lat: 21.7645, lon: 72.1519 },
+    { name: "Junagadh", lat: 21.5222, lon: 70.4579 },
+  ],
+  "Haryana": [
+    { name: "Gurugram", lat: 28.4595, lon: 77.0266 },
+    { name: "Faridabad", lat: 28.4089, lon: 77.3178 },
+    { name: "Panipat", lat: 29.3909, lon: 76.9635 },
+    { name: "Hisar", lat: 29.1492, lon: 75.7217 },
+    { name: "Karnal", lat: 29.6857, lon: 76.9905 },
+  ],
+  "Himachal Pradesh": [
+    { name: "Shimla", lat: 31.1048, lon: 77.1734 },
+    { name: "Manali", lat: 32.2432, lon: 77.1892 },
+    { name: "Dharamshala", lat: 32.2190, lon: 76.3234 },
+    { name: "Kullu", lat: 31.9578, lon: 77.1095 },
+    { name: "Solan", lat: 30.9045, lon: 77.0967 },
+  ],
+  "Jharkhand": [
+    { name: "Ranchi", lat: 23.3441, lon: 85.3096 },
+    { name: "Jamshedpur", lat: 22.8046, lon: 86.2029 },
+    { name: "Dhanbad", lat: 23.7957, lon: 86.4304 },
+    { name: "Bokaro", lat: 23.6693, lon: 86.1511 },
+  ],
+  "Karnataka": [
+    { name: "Bengaluru", lat: 12.9716, lon: 77.5946 },
+    { name: "Mysuru", lat: 12.2958, lon: 76.6394 },
+    { name: "Mangaluru", lat: 12.9141, lon: 74.8560 },
+    { name: "Hubballi", lat: 15.3647, lon: 75.1240 },
+    { name: "Belagavi", lat: 15.8497, lon: 74.4977 },
+    { name: "Shivamogga", lat: 13.9299, lon: 75.5681 },
+  ],
+  "Kerala": [
+    { name: "Thiruvananthapuram", lat: 8.5241, lon: 76.9366 },
+    { name: "Kochi", lat: 9.9312, lon: 76.2673 },
+    { name: "Kozhikode", lat: 11.2588, lon: 75.7804 },
+    { name: "Wayanad", lat: 11.6854, lon: 76.1320 },
+    { name: "Idukki", lat: 9.8494, lon: 76.9681 },
+    { name: "Thrissur", lat: 10.5276, lon: 76.2144 },
+  ],
+  "Madhya Pradesh": [
+    { name: "Bhopal", lat: 23.2599, lon: 77.4126 },
+    { name: "Indore", lat: 22.7196, lon: 75.8577 },
+    { name: "Gwalior", lat: 26.2183, lon: 78.1828 },
+    { name: "Jabalpur", lat: 23.1815, lon: 79.9864 },
+    { name: "Ujjain", lat: 23.1793, lon: 75.7849 },
+  ],
+  "Maharashtra": [
+    { name: "Mumbai", lat: 19.0760, lon: 72.8777 },
+    { name: "Pune", lat: 18.5204, lon: 73.8567 },
+    { name: "Nagpur", lat: 21.1458, lon: 79.0882 },
+    { name: "Aurangabad (Chhatrapati Sambhajinagar)", lat: 19.8762, lon: 75.3433 },
+    { name: "Nashik", lat: 19.9975, lon: 73.7898 },
+    { name: "Kolhapur", lat: 16.7050, lon: 74.2433 },
+    { name: "Solapur", lat: 17.6599, lon: 75.9064 },
+  ],
+  "Manipur": [{ name: "Imphal", lat: 24.8170, lon: 93.9368 }],
+  "Meghalaya": [{ name: "Shillong", lat: 25.5788, lon: 91.8933 }],
+  "Mizoram": [{ name: "Aizawl", lat: 23.7271, lon: 92.7176 }],
+  "Nagaland": [
+    { name: "Kohima", lat: 25.6751, lon: 94.1086 },
+    { name: "Dimapur", lat: 25.9091, lon: 93.7266 },
+  ],
+  "Odisha": [
+    { name: "Bhubaneswar", lat: 20.2961, lon: 85.8245 },
+    { name: "Cuttack", lat: 20.4625, lon: 85.8830 },
+    { name: "Puri", lat: 19.8135, lon: 85.8312 },
+    { name: "Rourkela", lat: 22.2604, lon: 84.8536 },
+  ],
+  "Punjab": [
+    { name: "Amritsar", lat: 31.6340, lon: 74.8723 },
+    { name: "Ludhiana", lat: 30.9010, lon: 75.8573 },
+    { name: "Jalandhar", lat: 31.3260, lon: 75.5762 },
+    { name: "Patiala", lat: 30.3398, lon: 76.3869 },
+  ],
+  "Rajasthan": [
+    { name: "Jaipur", lat: 26.9124, lon: 75.7873 },
+    { name: "Jodhpur", lat: 26.2389, lon: 73.0243 },
+    { name: "Udaipur", lat: 24.5854, lon: 73.7125 },
+    { name: "Kota", lat: 25.2138, lon: 75.8648 },
+    { name: "Ajmer", lat: 26.4499, lon: 74.6399 },
+    { name: "Bikaner", lat: 28.0229, lon: 73.3119 },
+  ],
+  "Sikkim": [{ name: "Gangtok", lat: 27.3389, lon: 88.6065 }],
+  "Tamil Nadu": [
+    { name: "Chennai", lat: 13.0827, lon: 80.2707 },
+    { name: "Coimbatore", lat: 11.0168, lon: 76.9558 },
+    { name: "Madurai", lat: 9.9252, lon: 78.1198 },
+    { name: "Tiruchirappalli", lat: 10.7905, lon: 78.7047 },
+    { name: "Salem", lat: 11.6643, lon: 78.1460 },
+    { name: "Ooty (Nilgiris)", lat: 11.4064, lon: 76.6932 },
+  ],
+  "Telangana": [
+    { name: "Hyderabad", lat: 17.3850, lon: 78.4867 },
+    { name: "Warangal", lat: 17.9689, lon: 79.5941 },
+    { name: "Nizamabad", lat: 18.6725, lon: 78.0941 },
+  ],
+  "Tripura": [{ name: "Agartala", lat: 23.8315, lon: 91.2868 }],
+  "Uttar Pradesh": [
+    { name: "Lucknow", lat: 26.8467, lon: 80.9462 },
+    { name: "Kanpur", lat: 26.4499, lon: 80.3319 },
+    { name: "Varanasi", lat: 25.3176, lon: 82.9739 },
+    { name: "Agra", lat: 27.1767, lon: 78.0081 },
+    { name: "Prayagraj", lat: 25.4358, lon: 81.8463 },
+    { name: "Meerut", lat: 28.9845, lon: 77.7064 },
+    { name: "Gorakhpur", lat: 26.7606, lon: 83.3732 },
+  ],
+  "Uttarakhand": [
+    { name: "Dehradun", lat: 30.3165, lon: 78.0322 },
+    { name: "Joshimath", lat: 30.5546, lon: 79.5644 },
+    { name: "Kedarnath", lat: 30.7346, lon: 79.0669 },
+    { name: "Chamoli", lat: 30.4000, lon: 79.3200 },
+    { name: "Rudraprayag", lat: 30.2848, lon: 78.9808 },
+    { name: "Nainital", lat: 29.3803, lon: 79.4636 },
+    { name: "Haridwar", lat: 29.9457, lon: 78.1642 },
+  ],
+  "West Bengal": [
+    { name: "Kolkata", lat: 22.5726, lon: 88.3639 },
+    { name: "Darjeeling", lat: 27.0410, lon: 88.2663 },
+    { name: "Siliguri", lat: 26.7271, lon: 88.3953 },
+    { name: "Asansol", lat: 23.6739, lon: 86.9524 },
+    { name: "Durgapur", lat: 23.5204, lon: 87.3119 },
+  ],
+  "Delhi (NCT)": [{ name: "New Delhi", lat: 28.6139, lon: 77.2090 }],
+  "Jammu & Kashmir": [
+    { name: "Srinagar", lat: 34.0837, lon: 74.7973 },
+    { name: "Jammu", lat: 32.7266, lon: 74.8570 },
+  ],
+  "Ladakh": [{ name: "Leh", lat: 34.1526, lon: 77.5770 }],
+  "Puducherry": [{ name: "Puducherry", lat: 11.9416, lon: 79.8083 }],
+  "Chandigarh": [{ name: "Chandigarh", lat: 30.7333, lon: 76.7794 }],
+  "Andaman & Nicobar Islands": [{ name: "Port Blair", lat: 11.6234, lon: 92.7265 }],
+};
+
 let map = L.map("map", { zoomControl: true }).setView([30.3, 79.0], 6);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap contributors",
@@ -114,14 +294,49 @@ async function loadDashboard() {
 
 document.getElementById("refresh-btn").addEventListener("click", loadDashboard);
 
-document.getElementById("check-btn").addEventListener("click", async () => {
-  const lat = parseFloat(document.getElementById("lat-input").value);
-  const lon = parseFloat(document.getElementById("lon-input").value);
-  const name = document.getElementById("name-input").value || "Custom location";
-  if (isNaN(lat) || isNaN(lon)) {
-    alert("Please enter valid latitude and longitude.");
+// ---------------------------------------------------------------
+// State -> City/District dropdown wiring
+// ---------------------------------------------------------------
+const stateSelect = document.getElementById("state-select");
+const citySelect = document.getElementById("city-select");
+const latInput = document.getElementById("lat-input");
+const lonInput = document.getElementById("lon-input");
+const nameInput = document.getElementById("name-input");
+
+Object.keys(INDIA_LOCATIONS).sort().forEach((state) => {
+  const opt = document.createElement("option");
+  opt.value = state;
+  opt.textContent = state;
+  stateSelect.appendChild(opt);
+});
+
+stateSelect.addEventListener("change", () => {
+  const state = stateSelect.value;
+  citySelect.innerHTML = '<option value="">Select City / District</option>';
+  if (!state) {
+    citySelect.disabled = true;
     return;
   }
+  citySelect.disabled = false;
+  INDIA_LOCATIONS[state].forEach((city) => {
+    const opt = document.createElement("option");
+    opt.value = city.name;
+    opt.textContent = city.name;
+    opt.dataset.lat = city.lat;
+    opt.dataset.lon = city.lon;
+    citySelect.appendChild(opt);
+  });
+});
+
+citySelect.addEventListener("change", () => {
+  const opt = citySelect.selectedOptions[0];
+  if (!opt || !opt.dataset.lat) return;
+  latInput.value = opt.dataset.lat;
+  lonInput.value = opt.dataset.lon;
+  nameInput.value = `${opt.value}, ${stateSelect.value}`;
+});
+
+async function checkLocation(lat, lon, name) {
   const res = await fetch(`/api/predict?lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}`);
   const loc = await res.json();
   loc.id = "custom-" + Date.now();
@@ -129,6 +344,28 @@ document.getElementById("check-btn").addEventListener("click", async () => {
   const m = L.marker([lat, lon], { icon: markerIcon(loc.risk_level) }).addTo(map);
   m.bindPopup(`<b>${loc.name}</b><br/>Risk: <b style="color:${RISK_COLORS[loc.risk_level]}">${loc.risk_level}</b>`).openPopup();
   showDetail(loc);
+  latInput.value = lat;
+  lonInput.value = lon;
+  nameInput.value = name;
+  return loc;
+}
+
+document.getElementById("check-btn").addEventListener("click", async () => {
+  const lat = parseFloat(latInput.value);
+  const lon = parseFloat(lonInput.value);
+  const name = nameInput.value || "Custom location";
+  if (isNaN(lat) || isNaN(lon)) {
+    alert("Please select a State + City, or enter latitude/longitude directly.");
+    return;
+  }
+  await checkLocation(lat, lon, name);
+});
+
+// Click anywhere on the map -> fetch live risk for that exact point
+map.on("click", async (e) => {
+  const lat = e.latlng.lat.toFixed(4);
+  const lon = e.latlng.lng.toFixed(4);
+  await checkLocation(lat, lon, `Map point (${lat}, ${lon})`);
 });
 
 loadDashboard();

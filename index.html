@@ -1,57 +1,187 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FlashGuard | Hyper-Local Flash Flood Early Warning</title>
-<link rel="icon" href="data:,">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>FLASHGUARD — Flash Flood Warning System</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
 
-<header class="topbar">
-  <div class="brand">
-    <div class="brand-mark">FG</div>
+  <header class="topbar">
     <div>
-      <div class="brand-title">FLASHGUARD</div>
-      <div class="brand-sub">Hyper-Local Flash Flood Prediction &amp; Early Warning</div>
+      <h1>FLASHGUARD</h1>
+      <p>Hyper-Local Flash Flood Prediction & Early Warning System</p>
     </div>
-  </div>
-  <div class="topbar-right">
-    <span id="last-updated" class="muted">—</span>
-    <button id="refresh-btn" class="btn-primary">⟳ Refresh</button>
-  </div>
-</header>
+  </header>
 
-<div class="layout">
+  <main class="container">
 
-  <aside class="sidebar">
-    <div class="summary-cards" id="summary-cards"></div>
+    <!-- LOCATION SECTION -->
+    <section class="card search-card">
 
-    <div class="search-box">
-      <div class="search-title">Check any location</div>
-      <div class="search-row">
-        <input id="lat-input" type="text" placeholder="Latitude" />
-        <input id="lon-input" type="text" placeholder="Longitude" />
+      <h2>📍 Select Location</h2>
+
+      <p class="location-help">
+        Search for a city, district or state, or click directly on the map.
+      </p>
+
+      <div class="location-search-wrapper">
+
+        <input
+          id="location-input"
+          type="text"
+          autocomplete="off"
+          placeholder="Search city, district or state..."
+        />
+
+        <div
+          id="location-suggestions"
+          class="location-suggestions hidden"
+        ></div>
+
       </div>
-      <input id="name-input" type="text" placeholder="Location name (optional)" />
-      <button id="check-btn" class="btn-secondary">Predict Risk</button>
-    </div>
 
-    <div class="location-list-title">Monitored Locations</div>
-    <div id="location-list" class="location-list"></div>
-  </aside>
+      <div class="location-actions">
 
-  <main class="map-wrap">
-    <div id="map"></div>
-    <div id="detail-panel" class="detail-panel hidden"></div>
+        <button
+          id="map-select-btn"
+          class="map-select-btn"
+          type="button"
+        >
+          📍 Select on Map
+        </button>
+
+        <button
+          id="clear-location-btn"
+          class="clear-location-btn"
+          type="button"
+        >
+          ✕ Clear
+        </button>
+
+      </div>
+
+      <!-- Selected location -->
+      <div
+        id="selected-location-box"
+        class="selected-location-box hidden"
+      >
+        <strong>Selected Location</strong>
+
+        <div id="selected-location-name">
+          —
+        </div>
+
+        <div class="coordinates-row">
+
+          <div>
+            <label>Latitude</label>
+            <input
+              id="lat-input"
+              type="text"
+              readonly
+            />
+          </div>
+
+          <div>
+            <label>Longitude</label>
+            <input
+              id="lon-input"
+              type="text"
+              readonly
+            />
+          </div>
+
+        </div>
+      </div>
+
+      <button
+        id="check-btn"
+        class="btn-primary"
+        type="button"
+      >
+        🔍 Predict Flood Risk
+      </button>
+
+    </section>
+
+
+    <!-- MAP -->
+    <section class="card">
+
+      <div class="section-header">
+        <div>
+          <h2>🗺️ Interactive Risk Map</h2>
+          <p>Click anywhere on the map to select a location.</p>
+        </div>
+      </div>
+
+      <div id="map"></div>
+
+    </section>
+
+
+    <!-- RESULT -->
+    <section
+      id="result-section"
+      class="card hidden"
+    >
+
+      <h2>⚠️ Flood Risk Assessment</h2>
+
+      <div id="detail-panel"></div>
+
+    </section>
+
+
+    <!-- DASHBOARD -->
+    <section class="card">
+
+      <div class="section-header">
+
+        <div>
+          <h2>📊 Live Dashboard</h2>
+          <p>Current system information</p>
+        </div>
+
+        <button
+          id="refresh-btn"
+          class="btn-secondary"
+          type="button"
+        >
+          🔄 Refresh
+        </button>
+
+      </div>
+
+      <div id="dashboard"></div>
+
+    </section>
+
   </main>
 
-</div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/script.js"></script>
+  <footer>
+    <p>
+      FLASHGUARD • Smart India Hackathon 2026
+    </p>
+  </footer>
+
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+  </script>
+
+  <script src="/static/script.js"></script>
+
 </body>
 </html>
